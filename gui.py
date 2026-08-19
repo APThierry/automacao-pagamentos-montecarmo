@@ -84,8 +84,16 @@ class AppGUI:
         self.entry_email_to.insert(0, self.config.get("email_contas_pagar", "contasapagar@montecarmo.com.br"))
         self.entry_email_to.grid(row=1, column=1, padx=10, pady=8, sticky="ew")
 
+        # Linha 3: API Key do ChatGPT (OpenAI)
+        lbl_gpt = ctk.CTkLabel(config_frame, text="Chave API ChatGPT (Opcional):", font=ctk.CTkFont(weight="bold"))
+        lbl_gpt.grid(row=2, column=0, sticky="w", padx=15, pady=8)
+
+        self.entry_gpt_key = ctk.CTkEntry(config_frame, width=500, show="*")
+        self.entry_gpt_key.insert(0, self.config.get("openai_api_key", ""))
+        self.entry_gpt_key.grid(row=2, column=1, padx=10, pady=8, sticky="ew")
+
         btn_save_config = ctk.CTkButton(config_frame, text="Salvar Config", width=100, fg_color="#3B82F6", command=self._save_config)
-        btn_save_config.grid(row=1, column=2, padx=15, pady=8)
+        btn_save_config.grid(row=2, column=2, padx=15, pady=8)
 
         config_frame.columnconfigure(1, weight=1)
 
@@ -176,6 +184,8 @@ class AppGUI:
     def _save_config(self):
         self.config["caminho_rede"] = self.entry_path.get().strip()
         self.config["email_contas_pagar"] = self.entry_email_to.get().strip()
+        if hasattr(self, "entry_gpt_key"):
+            self.config["openai_api_key"] = self.entry_gpt_key.get().strip()
         self.config_loader.save_config(self.config)
         messagebox.showinfo("Configurações", "Configurações salvas com sucesso!")
 
@@ -195,7 +205,10 @@ class AppGUI:
         if not file_path:
             return
 
-        extractor = PDFExtractor()
+        extractor = PDFExtractor(
+            api_key=self.config.get("openai_api_key"),
+            model=self.config.get("openai_model", "gpt-4o-mini")
+        )
         nome_pasta = os.path.basename(os.path.dirname(file_path)) or "Teste"
         res = extractor.parse_boleto_data(file_path, nome_pasta)
 

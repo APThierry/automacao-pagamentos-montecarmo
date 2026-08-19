@@ -17,11 +17,12 @@ except ImportError:
 class PDFExtractor:
     """
     Extrator avançado de dados de PDFs de boletos bancários, concessionárias e notas fiscais (DANFE/NFS-e).
-    Extrai: Fornecedor/Beneficiário, CNPJ, Valor (R$), Data de Vencimento, Linha Digitável e Descrição.
+    Suporta múltiplos motores (pdfplumber, pypdf, pypdfium2, OCR) e integração com a API do ChatGPT (OpenAI).
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
+        self.api_key = api_key
+        self.model = model
 
     def extract_pdf_text(self, file_path: str) -> str:
         """
@@ -215,6 +216,41 @@ class PDFExtractor:
         # 6. Classificação do Tipo de Documento (boleto vs nota_fiscal)
         res["tipo_documento"] = self._classificar_tipo_documento(raw_text, filename, linha_dig)
 
+        # 7. Fallback com ChatGPT API (OpenAI) se a chave de API estiver configurada
+        api_key = self.api_key or os.getenv("OPENAI_API_KEY")
+        if api_key and (not res["data_vencimento"] or res["valor"] == 0.0 or not res["linha_digitavel"]):
+            gpt_res = self._extract_with_chatgpt(raw_text, filename)
+            if gpt_res:
+                if not res["data_vencimento"] and gpt_res.get("data_vencimento"):
+                    try:
+                        dt = datetime.strptime(gpt_res["data_vencimento"], "%Y-%m-%d").date()
+                        res["data_vencimento"] = dt
+                        res["data_vencimento_str"] = dt.strftime("%d/%m/%Y")
+                    except ValueError:
+                        pass
+
+                if res["valor"] == 0.0 and gpt_res.get("valor"):
+                    try:
+                        val = float(gpt_res["valor"])
+                        if val > 0:
+                            res["valor"] = val
+                            res["valor_formatado"] = self._formatar_moeda(val)
+                    except ValueError:
+                        pass
+
+                if not res["linha_digitavel"] and gpt_res.get("linha_digitavel"):
+                    res["linha_digitavel"] = gpt_res["linha_digitavel"]
+
+                if (not res["fornecedor_pdf"] or res["fornecedor"] == nome_pasta_fallback) and gpt_res.get("fornecedor"):
+                    res["fornecedor_pdf"] = gpt_res["fornecedor"]
+                    res["fornecedor"] = gpt_res["fornecedor"]
+
+                if gpt_res.get("descricao") and res["descricao"] == nome_pasta_fallback:
+                    res["descricao"] = gpt_res["descricao"]
+
+                if gpt_res.get("tipo_documento"):
+                    res["tipo_documento"] = gpt_res["tipo_documento"]
+
         # Validação do sucesso da extração
         if res["data_vencimento"] or res["valor"] > 0:
             res["sucesso"] = True
@@ -222,6 +258,50 @@ class PDFExtractor:
             res["erro"] = "Dados cruciais (Vencimento/Valor) não puderam ser identificados com precisão."
 
         return res
+
+    def _extract_with_chatgpt(self, raw_text: str, filename: str) -> Optional[Dict[str, Any]]:
+        """
+        Utiliza a API do ChatGPT (OpenAI) para extrair informações estruturadas em JSON a partir do texto do PDF.
+        """
+        api_key = self.api_key or os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return None
+
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+
+            system_prompt = (
+                "Você é um assistente financeiro especialista em extração de dados de boletos bancários e notas fiscais brasileiras.\n"
+                "Sua tarefa é analisar o texto do documento e extrair estritamente um objeto JSON com as chaves:\n"
+                "- fornecedor: nome da empresa emissora/beneficiária (string)\n"
+                "- cnpj: CNPJ no formato XX.XXX.XXX/XXXX-XX (string ou null)\n"
+                "- valor: número float do valor líquido/total do documento (ex: 1250.50)\n"
+                "- data_vencimento: data no formato YYYY-MM-DD (string ou null)\n"
+                "- linha_digitavel: linha digitável do código de barras de 47 ou 48 dígitos (string ou null)\n"
+                "- descricao: breve resumo do serviço (ex: internet, ramal, aluguel, manutenção) (string)\n"
+                "- tipo_documento: 'boleto' ou 'nota_fiscal'\n\n"
+                "Responda APENAS com o objeto JSON válido."
+            )
+
+            user_prompt = f"Nome do Arquivo: {filename}\n\nTexto do PDF:\n{raw_text[:3500]}"
+
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.0,
+                response_format={"type": "json_object"}
+            )
+
+            import json
+            data = json.loads(response.choices[0].message.content)
+            return data
+        except Exception as e:
+            print(f"[ChatGPT API] Erro ao extrair dados via OpenAI: {e}")
+            return None
 
     def _classificar_tipo_documento(self, text: str, filename: str, linha_digitavel: Optional[str]) -> str:
         """Classifica se o PDF é um Boleto ou uma Nota Fiscal."""

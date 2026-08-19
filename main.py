@@ -21,7 +21,9 @@ class AutomacaoPagamentos:
         else:
             self.caminho_raiz = self.config.get("caminho_rede", r"\\SERVIDOR\Pagamentos")
 
-        self.extractor = PDFExtractor()
+        api_key_gpt = self.config.get("openai_api_key")
+        model_gpt = self.config.get("openai_model", "gpt-4o-mini")
+        self.extractor = PDFExtractor(api_key=api_key_gpt, model=model_gpt)
         self.outlook = OutlookService(self.config)
         self.logger = AutomationLogger(self.config.get("log_folder", "logs"))
 

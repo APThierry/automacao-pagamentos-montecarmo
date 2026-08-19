@@ -9,6 +9,9 @@ DEFAULT_CONFIG = {
     "email_marcus": "marcus@montecarmo.com.br",
     "email_harley": "harley@montecarmo.com.br",
     "assinante": "Thierry Silva | Tecnologia da Informação",
+    "openai_api_key": "",
+    "usar_openai_fallback": True,
+    "openai_model": "gpt-4o-mini",
     "dias_pagamento_validos": [0, 1, 2],
     "log_folder": "logs"
 }
