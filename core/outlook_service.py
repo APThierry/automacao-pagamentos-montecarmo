@@ -63,24 +63,60 @@ class OutlookService:
         fornecedor_principal = boletos_info[0].get("fornecedor", nome_pasta) if boletos_info else nome_pasta
         corpo += f"Solicito programação de pagamento referente ao boleto do mês de {mes_extenso} da {fornecedor_principal}.\n\n"
 
-        if len(boletos_info) == 1:
-            b = boletos_info[0]
+        # Separa boletos de notas fiscais
+        boletos = [b for b in boletos_info if b.get("tipo_documento") == "boleto" or b.get("linha_digitavel")]
+        notas_fiscais = [b for b in boletos_info if b not in boletos]
+
+        # Caso 1: Pasta possui exatamente 1 boleto (com ou sem notas fiscais associadas)
+        if len(boletos) == 1:
+            b = boletos[0]
             venc_str = b.get("data_vencimento_str", "A verificar")
             pag_str = b.get("data_pagamento_str", "A verificar")
             forn_str = b.get("fornecedor", nome_pasta)
             val_str = b.get("valor_formatado", "R$ 0,00")
+            linha_dig = b.get("linha_digitavel")
 
             corpo += f"Data de vencimento: {venc_str}\n"
             corpo += f"Data para pagamento: {pag_str}\n"
             corpo += f"Fornecedor: {forn_str}\n"
             corpo += f"Valor: {val_str}\n"
             corpo += "Forma de pagamento: Boleto\n"
+            if linha_dig:
+                corpo += f"Linha Digitável: {linha_dig}\n"
+
+            if notas_fiscais:
+                corpo += f"\nNotas Fiscais anexadas ({len(notas_fiscais)} item/itens):\n"
+                for nf in notas_fiscais:
+                    val_nf = nf.get("valor_formatado", "R$ 0,00")
+                    corpo += f"• {nf['arquivo']} - {val_nf}\n"
+                corpo += "(Valor total consolidado no boleto em anexo)\n"
 
             if b.get("esta_vencido"):
                 corpo += "\n⚠️ Atenção: data de vencimento já passou. Verificar urgência.\n"
 
+        # Caso 2: Apensas 1 documento genérico ou sem tipo boleto explícito
+        elif len(boletos_info) == 1:
+            b = boletos_info[0]
+            venc_str = b.get("data_vencimento_str", "A verificar")
+            pag_str = b.get("data_pagamento_str", "A verificar")
+            forn_str = b.get("fornecedor", nome_pasta)
+            val_str = b.get("valor_formatado", "R$ 0,00")
+            linha_dig = b.get("linha_digitavel")
+
+            corpo += f"Data de vencimento: {venc_str}\n"
+            corpo += f"Data para pagamento: {pag_str}\n"
+            corpo += f"Fornecedor: {forn_str}\n"
+            corpo += f"Valor: {val_str}\n"
+            corpo += "Forma de pagamento: Boleto\n"
+            if linha_dig:
+                corpo += f"Linha Digitável: {linha_dig}\n"
+
+            if b.get("esta_vencido"):
+                corpo += "\n⚠️ Atenção: data de vencimento já passou. Verificar urgência.\n"
+
+        # Caso 3: Múltiplos boletos na mesma pasta
         else:
-            corpo += f"Boletos identificados na pasta ({len(boletos_info)} itens):\n\n"
+            corpo += f"Documentos/Boletos identificados na pasta ({len(boletos_info)} itens):\n\n"
             tem_vencido = False
             for idx, b in enumerate(boletos_info, 1):
                 venc_str = b.get("data_vencimento_str", "A verificar")
@@ -88,19 +124,24 @@ class OutlookService:
                 forn_str = b.get("fornecedor", nome_pasta)
                 val_str = b.get("valor_formatado", "R$ 0,00")
                 arquivo_str = b.get("arquivo", "")
+                linha_dig = b.get("linha_digitavel")
+                tipo_str = "Boleto" if b.get("tipo_documento") == "boleto" else "Nota Fiscal"
 
-                corpo += f"--- Boleto {idx} ({arquivo_str}) ---\n"
+                corpo += f"--- Documento {idx}: {tipo_str} ({arquivo_str}) ---\n"
                 corpo += f"Data de vencimento: {venc_str}\n"
                 corpo += f"Data para pagamento: {pag_str}\n"
                 corpo += f"Fornecedor: {forn_str}\n"
                 corpo += f"Valor: {val_str}\n"
-                corpo += "Forma de pagamento: Boleto\n\n"
+                corpo += "Forma de pagamento: Boleto\n"
+                if linha_dig:
+                    corpo += f"Linha Digitável: {linha_dig}\n"
+                corpo += "\n"
 
                 if b.get("esta_vencido"):
                     tem_vencido = True
 
             if tem_vencido:
-                corpo += "⚠️ Atenção: Há boleto(s) com data de vencimento já ultrapassada. Verificar urgência.\n\n"
+                corpo += "⚠️ Atenção: Há documento(s) com data de vencimento já ultrapassada. Verificar urgência.\n\n"
 
         corpo += "\nQualquer dúvida estou à disposição."
 

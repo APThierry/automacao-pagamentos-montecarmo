@@ -3,6 +3,11 @@
 venv/
 ENV/
 
+# PyInstaller Build & Dist Binaries
+dist/
+build/
+*.spec
+
 # Arquivos temporários do Python e caches
 __pycache__/
 *.py[cod]
