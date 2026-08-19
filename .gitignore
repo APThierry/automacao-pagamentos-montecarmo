@@ -1,0 +1,22 @@
+# Ambiente Virtual Python
+.venv/
+venv/
+ENV/
+
+# Arquivos temporários do Python e caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Dados de teste e logs locais
+sample_data/
+logs/
+*.log
+*.json
+!config.json
+
+# IDE / Editores
+.vscode/
+.idea/
+.gemini/

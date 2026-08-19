@@ -1,0 +1,14 @@
+{
+    "caminho_rede": "O:/MCS-LANÇAMENTO DE NOTAS/Despesas Operacionais/2026/08.2026",
+    "email_contas_pagar": "contasapagar@montecarmoshopping.com.br",
+    "email_michel": "michel@montecarmo.com.br",
+    "email_marcus": "marcus@montecarmo.com.br",
+    "email_harley": "harley@montecarmo.com.br",
+    "assinante": "Thierry Silva | Tecnologia da Informação",
+    "dias_pagamento_validos": [
+        0,
+        1,
+        2
+    ],
+    "log_folder": "logs"
+}
