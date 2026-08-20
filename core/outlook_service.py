@@ -147,23 +147,33 @@ class OutlookService:
 
         # Tenta criar o rascunho no Outlook via Win32 COM
         if self._win32:
-            try:
-                outlook = self._win32.Dispatch('outlook.application')
-                mail = outlook.CreateItem(0)  # 0 = olMailItem
+            import time
+            for tentativa in range(3):
+                try:
+                    try:
+                        import pythoncom
+                        pythoncom.CoInitialize()
+                    except Exception:
+                        pass
 
-                mail.Subject = assunto
-                mail.Body = corpo
-                mail.To = para
-                mail.CC = cc
+                    outlook = self._win32.Dispatch('outlook.application')
+                    mail = outlook.CreateItem(0)  # 0 = olMailItem
 
-                for anexo_path in anexos:
-                    if os.path.exists(anexo_path):
-                        mail.Attachments.Add(os.path.abspath(anexo_path))
+                    mail.Subject = assunto
+                    mail.Body = corpo
+                    mail.To = para
+                    mail.CC = cc
 
-                mail.Save()  # Salva como RASCUNHO (NUNCA envia)
-                return True, f"Rascunho criado com sucesso: '{assunto}'"
-            except Exception as e:
-                return False, f"Falha ao integrar com Outlook COM: {e}"
+                    for anexo_path in anexos:
+                        if os.path.exists(anexo_path):
+                            mail.Attachments.Add(os.path.abspath(anexo_path))
+
+                    mail.Save()  # Salva como RASCUNHO (NUNCA envia)
+                    return True, f"Rascunho criado com sucesso: '{assunto}'"
+                except Exception as e:
+                    if tentativa == 2:
+                        return False, f"Falha ao integrar com Outlook COM: {e}"
+                    time.sleep(0.5)
         else:
             # Modo Simulação (caso Outlook não esteja presente ou em ambiente sem COM)
             return True, f"[SIMULAÇÃO] Rascunho seria criado para: '{assunto}' (Para: {para})"

@@ -5,7 +5,7 @@ from datetime import date
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-# Tenta carregar CustomTkinter para estética moderna premium, fallback para Tkinter padrão se necessário
+# Tenta carregar CustomTkinter para estética moderna premium
 USE_CUSTOM_TK = False
 try:
     import customtkinter as ctk
@@ -33,24 +33,25 @@ class AppGUI:
 
         if USE_CUSTOM_TK:
             self.root = ctk.CTk()
-            self.root.title("Monte Carmo Shopping — Programação de Pagamentos")
-            self.root.geometry("1020x760")
-            self.root.minsize(900, 650)
+            self.root.title("Monte Carmo Shopping — Automação de Pagamentos & Outlook")
+            self.root.geometry("1060x780")
+            self.root.minsize(920, 680)
             self._build_custom_ui()
         else:
             self.root = tk.Tk()
-            self.root.title("Monte Carmo Shopping — Programação de Pagamentos")
-            self.root.geometry("950x700")
+            self.root.title("Monte Carmo Shopping — Automação de Pagamentos")
+            self.root.geometry("980x720")
             self._build_standard_ui()
 
         self._setup_treeview_styles()
+        self._create_context_menu()
 
     def _setup_treeview_styles(self):
         """Configura o estilo escuro elegante para a Treeview do Tkinter."""
         style = ttk.Style()
         style.theme_use("clam")
         
-        bg_color = "#1F2937"
+        bg_color = "#1E1E2E"
         fg_color = "#F3F4F6"
         heading_bg = "#111827"
         selected_bg = "#2563EB"
@@ -60,7 +61,7 @@ class AppGUI:
             background=bg_color,
             foreground=fg_color,
             fieldbackground=bg_color,
-            rowheight=28,
+            rowheight=30,
             font=("Segoe UI", 10)
         )
         style.configure(
@@ -68,142 +69,191 @@ class AppGUI:
             background=heading_bg,
             foreground="#9CA3AF",
             font=("Segoe UI", 10, "bold"),
-            relief="flat"
+            relief="flat",
+            padding=6
         )
         style.map("Treeview", background=[("selected", selected_bg)], foreground=[("selected", "#FFFFFF")])
         style.map("Treeview.Heading", background=[("active", "#374151")])
 
+    def _create_context_menu(self):
+        """Cria o menu de contexto (clique direito) na tabela."""
+        self.context_menu = tk.Menu(self.root, tearoff=0, bg="#1F2937", fg="#F3F4F6", activebackground="#2563EB")
+        self.context_menu.add_command(label="📄 Visualizar PDF", command=self._open_selected_pdf)
+        self.context_menu.add_command(label="📁 Abrir Pasta no Windows Explorer", command=self._open_selected_folder)
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label="📋 Copiar Linha Digitável / Código de Barras", command=self._copy_linha_digitavel)
+        self.context_menu.add_command(label="✉️ Abrir Pasta de Rascunhos no Outlook", command=self._open_outlook_drafts)
+
+    def _show_context_menu(self, event):
+        item = self.tree.identify_row(event.y)
+        if item:
+            self.tree.selection_set(item)
+            self.context_menu.post(event.x_root, event.y_root)
+
     def _build_custom_ui(self):
-        # 1. Header Frame
-        header_frame = ctk.CTkFrame(self.root, fg_color="#1F2937", corner_radius=10)
-        header_frame.pack(fill="x", padx=15, pady=8)
+        # 1. Header Frame Premium
+        header_frame = ctk.CTkFrame(self.root, fg_color="#181825", corner_radius=12, border_width=1, border_color="#313244")
+        header_frame.pack(fill="x", padx=15, pady=(12, 6))
 
         title_label = ctk.CTkLabel(
             header_frame, 
-            text="🏢 Monte Carmo Shopping — Automação Financeira", 
-            font=ctk.CTkFont(size=20, weight="bold"),
+            text="🏢 Monte Carmo Shopping", 
+            font=ctk.CTkFont(size=22, weight="bold"),
             text_color="#F3F4F6"
         )
-        title_label.pack(side="left", padx=15, pady=12)
+        title_label.pack(side="left", padx=18, pady=12)
+
+        title_badge = ctk.CTkLabel(
+            header_frame, 
+            text="AUTOMAÇÃO FINANCEIRA & OUTLOOK", 
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="#10B981",
+            fg_color="#064E3B",
+            corner_radius=6,
+            padx=10,
+            pady=4
+        )
+        title_badge.pack(side="left", padx=5, pady=12)
 
         subtitle_label = ctk.CTkLabel(
             header_frame, 
-            text="Programação de Pagamentos & Outlook", 
+            text="v2.5 • Programação de Pagamentos", 
             font=ctk.CTkFont(size=12),
             text_color="#9CA3AF"
         )
-        subtitle_label.pack(side="right", padx=15, pady=12)
+        subtitle_label.pack(side="right", padx=18, pady=12)
 
-        # 2. Config Frame
-        config_frame = ctk.CTkFrame(self.root, corner_radius=10)
+        # 2. Frame de Configurações
+        config_frame = ctk.CTkFrame(self.root, corner_radius=10, fg_color="#1E1E2E")
         config_frame.pack(fill="x", padx=15, pady=4)
 
-        lbl_path = ctk.CTkLabel(config_frame, text="Caminho das Pastas (Rede):", font=ctk.CTkFont(weight="bold"))
+        lbl_path = ctk.CTkLabel(config_frame, text="📁 Caminho das Pastas (Rede):", font=ctk.CTkFont(weight="bold"))
         lbl_path.grid(row=0, column=0, sticky="w", padx=15, pady=6)
 
-        self.entry_path = ctk.CTkEntry(config_frame, width=500)
+        self.entry_path = ctk.CTkEntry(config_frame, width=480, placeholder_text="Digite ou selecione a pasta de pagamentos...")
         self.entry_path.insert(0, self.config.get("caminho_rede", r"\\SERVIDOR\Pagamentos"))
         self.entry_path.grid(row=0, column=1, padx=10, pady=6, sticky="ew")
 
-        btn_browse = ctk.CTkButton(config_frame, text="Selecionar...", width=100, command=self._browse_path)
+        btn_browse = ctk.CTkButton(config_frame, text="Procurar...", width=100, fg_color="#374151", hover_color="#4B5563", command=self._browse_path)
         btn_browse.grid(row=0, column=2, padx=15, pady=6)
 
-        lbl_emails = ctk.CTkLabel(config_frame, text="E-mail Contas a Pagar:", font=ctk.CTkFont(weight="bold"))
+        lbl_emails = ctk.CTkLabel(config_frame, text="✉️ E-mail Contas a Pagar:", font=ctk.CTkFont(weight="bold"))
         lbl_emails.grid(row=1, column=0, sticky="w", padx=15, pady=6)
 
-        self.entry_email_to = ctk.CTkEntry(config_frame, width=500)
+        self.entry_email_to = ctk.CTkEntry(config_frame, width=480)
         self.entry_email_to.insert(0, self.config.get("email_contas_pagar", "contasapagar@montecarmo.com.br"))
         self.entry_email_to.grid(row=1, column=1, padx=10, pady=6, sticky="ew")
 
-        lbl_gpt = ctk.CTkLabel(config_frame, text="Chave API ChatGPT (Opcional):", font=ctk.CTkFont(weight="bold"))
+        lbl_gpt = ctk.CTkLabel(config_frame, text="🔑 Chave API ChatGPT (Opcional):", font=ctk.CTkFont(weight="bold"))
         lbl_gpt.grid(row=2, column=0, sticky="w", padx=15, pady=6)
 
-        self.entry_gpt_key = ctk.CTkEntry(config_frame, width=500, show="*")
+        self.entry_gpt_key = ctk.CTkEntry(config_frame, width=480, show="*")
         self.entry_gpt_key.insert(0, self.config.get("openai_api_key", ""))
         self.entry_gpt_key.grid(row=2, column=1, padx=10, pady=6, sticky="ew")
 
-        btn_save_config = ctk.CTkButton(config_frame, text="Salvar Config", width=100, fg_color="#3B82F6", command=self._save_config)
+        btn_save_config = ctk.CTkButton(config_frame, text="Salvar Config", width=100, fg_color="#2563EB", hover_color="#1D4ED8", command=self._save_config)
         btn_save_config.grid(row=2, column=2, padx=15, pady=6)
 
         config_frame.columnconfigure(1, weight=1)
 
-        # 3. Action Buttons Frame
-        action_frame = ctk.CTkFrame(self.root, corner_radius=10)
+        # 3. Frame de Ações Principais
+        action_frame = ctk.CTkFrame(self.root, corner_radius=10, fg_color="#1E1E2E")
         action_frame.pack(fill="x", padx=15, pady=4)
 
         self.btn_run = ctk.CTkButton(
             action_frame, 
-            text="🚀 Executar Automação (Salvar Rascunhos)", 
+            text="🚀 Executar Automação (Gerar Rascunhos no Outlook)", 
             font=ctk.CTkFont(size=14, weight="bold"),
             fg_color="#10B981", 
             hover_color="#059669",
-            height=38,
+            height=42,
             command=self._start_automation_thread
         )
         self.btn_run.pack(side="left", padx=15, pady=8, expand=True, fill="x")
 
         btn_test_pdf = ctk.CTkButton(
             action_frame, 
-            text="📄 Testar PDF Individual", 
-            font=ctk.CTkFont(size=12),
-            fg_color="#6B7280",
-            height=38,
+            text="🔍 Testar 1 PDF", 
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color="#4B5563",
+            hover_color="#374151",
+            height=42,
             command=self._test_single_pdf
         )
         btn_test_pdf.pack(side="right", padx=15, pady=8)
 
-        # 4. Summary Stats Cards
-        stats_frame = ctk.CTkFrame(self.root, corner_radius=10)
+        # 4. Summary Stats Cards (Cards Indicadores)
+        stats_frame = ctk.CTkFrame(self.root, corner_radius=10, fg_color="transparent")
         stats_frame.pack(fill="x", padx=15, pady=4)
 
-        self.card_pastas = self._create_card(stats_frame, "Pastas Lidas", "0", 0)
-        self.card_pdfs = self._create_card(stats_frame, "PDFs Processados", "0", 1)
-        self.card_rascunhos = self._create_card(stats_frame, "Rascunhos Criados", "0", 2)
-        self.card_alertas = self._create_card(stats_frame, "Alertas / Erros", "0", 3)
+        self.card_pastas = self._create_card(stats_frame, "📁 Pastas Lidas", "0", 0, "#3B82F6")
+        self.card_pdfs = self._create_card(stats_frame, "📄 PDFs Processados", "0", 1, "#8B5CF6")
+        self.card_rascunhos = self._create_card(stats_frame, "✉️ Rascunhos Criados", "0", 2, "#10B981")
+        self.card_alertas = self._create_card(stats_frame, "⚠️ Alertas / Erros", "0", 3, "#EF4444")
 
         for i in range(4):
             stats_frame.columnconfigure(i, weight=1)
 
-        # 5. Tabview System (Tabela Interativa vs Console de Log)
-        self.tabview = ctk.CTkTabview(self.root, corner_radius=10)
-        self.tabview.pack(fill="both", expand=True, padx=15, pady=8)
+        # 5. Sistema de Abas (Tabview)
+        self.tabview = ctk.CTkTabview(self.root, corner_radius=10, fg_color="#1E1E2E")
+        self.tabview.pack(fill="both", expand=True, padx=15, pady=(4, 6))
 
         self.tab_tabela = self.tabview.add("📊 Tabela Interativa de Resultados")
         self.tab_log = self.tabview.add("🖥️ Log de Execução")
 
         self._build_table_tab(self.tab_tabela)
 
-        # Console de Log na Tab 2
-        self.log_textbox = ctk.CTkTextbox(self.tab_log, font=ctk.CTkFont(family="Consolas", size=12))
-        self.log_textbox.pack(fill="both", expand=True, padx=10, pady=10)
+        # Aba de Log de Execução
+        log_top = ctk.CTkFrame(self.tab_log, fg_color="transparent")
+        log_top.pack(fill="x", padx=5, pady=(5, 5))
+
+        lbl_log_title = ctk.CTkLabel(log_top, text="Log de Execução em Tempo Real:", font=ctk.CTkFont(weight="bold"))
+        lbl_log_title.pack(side="left", padx=5)
+
+        btn_copy_log = ctk.CTkButton(log_top, text="📋 Copiar Log", width=100, fg_color="#374151", command=self._copy_log)
+        btn_copy_log.pack(side="right", padx=5)
+
+        btn_clear_log = ctk.CTkButton(log_top, text="🗑️ Limpar", width=80, fg_color="#374151", command=self._clear_log)
+        btn_clear_log.pack(side="right", padx=5)
+
+        self.log_textbox = ctk.CTkTextbox(self.tab_log, font=ctk.CTkFont(family="Consolas", size=12), fg_color="#111827")
+        self.log_textbox.pack(fill="both", expand=True, padx=5, pady=(0, 5))
+
+        # Barra de Status na Parte Inferior
+        self.status_bar = ctk.CTkLabel(self.root, text="● Pronto para executar", font=ctk.CTkFont(size=11), text_color="#9CA3AF", anchor="w")
+        self.status_bar.pack(fill="x", padx=20, pady=(0, 6))
 
     def _build_table_tab(self, parent):
-        """Constrói a Tabela Interativa com filtros e botões de ação rápida na Tab 1."""
-        # Top Bar (Filtro + Busca + Ações)
+        """Constrói a Tabela Interativa na Tab 1 com barra de ferramentas e filtros inteligentes."""
         toolbar_frame = ctk.CTkFrame(parent, fg_color="transparent")
-        toolbar_frame.pack(fill="x", padx=5, pady=(5, 8))
+        toolbar_frame.pack(fill="x", padx=5, pady=(4, 8))
 
-        lbl_search = ctk.CTkLabel(toolbar_frame, text="Filtrar:", font=ctk.CTkFont(weight="bold"))
+        lbl_search = ctk.CTkLabel(toolbar_frame, text="🔍 Buscar:", font=ctk.CTkFont(weight="bold"))
         lbl_search.pack(side="left", padx=(5, 5))
 
-        self.entry_search = ctk.CTkEntry(toolbar_frame, placeholder_text="Buscar fornecedor, arquivo ou data...", width=260)
+        self.entry_search = ctk.CTkEntry(toolbar_frame, placeholder_text="Filtrar fornecedor, arquivo, valor ou data...", width=280)
         self.entry_search.pack(side="left", padx=5)
         self.entry_search.bind("<KeyRelease>", self._filter_table)
 
+        btn_clear_search = ctk.CTkButton(toolbar_frame, text="❌", width=30, fg_color="#374151", hover_color="#4B5563", command=self._clear_search)
+        btn_clear_search.pack(side="left", padx=(0, 8))
+
         self.combo_filter = ctk.CTkOptionMenu(
             toolbar_frame, 
-            values=["Todos", "Apenas Boletos", "Apenas Notas Fiscais", "Com Alerta/Erro"],
-            width=160,
+            values=["Todos os Documentos", "Apenas Boletos", "Apenas Notas Fiscais", "Com Alerta / Erro"],
+            width=170,
             command=self._filter_table
         )
         self.combo_filter.pack(side="left", padx=5)
 
+        # Botões de Ação na Direita
         btn_open_outlook = ctk.CTkButton(
             toolbar_frame, 
             text="✉️ Rascunhos Outlook", 
             fg_color="#8B5CF6", 
             hover_color="#7C3AED",
-            width=140,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            width=150,
             command=self._open_outlook_drafts
         )
         btn_open_outlook.pack(side="right", padx=5)
@@ -220,10 +270,10 @@ class AppGUI:
 
         btn_open_pdf = ctk.CTkButton(
             toolbar_frame, 
-            text="📄 Abrir PDF", 
+            text="📄 Visualizar PDF", 
             fg_color="#4B5563", 
             hover_color="#374151",
-            width=100,
+            width=110,
             command=self._open_selected_pdf
         )
         btn_open_pdf.pack(side="right", padx=5)
@@ -235,21 +285,21 @@ class AppGUI:
         columns = ("pasta", "arquivo", "tipo", "valor", "vencimento", "pagamento", "status")
         self.tree = ttk.Treeview(table_container, columns=columns, show="headings", selectmode="browse")
 
-        self.tree.heading("pasta", text="Pasta / Fornecedor", command=lambda: self._sort_column("pasta", False))
-        self.tree.heading("arquivo", text="Arquivo PDF", command=lambda: self._sort_column("arquivo", False))
-        self.tree.heading("tipo", text="Tipo", command=lambda: self._sort_column("tipo", False))
-        self.tree.heading("valor", text="Valor (R$)", command=lambda: self._sort_column("valor", False))
-        self.tree.heading("vencimento", text="Vencimento", command=lambda: self._sort_column("vencimento", False))
-        self.tree.heading("pagamento", text="Data Pagamento", command=lambda: self._sort_column("pagamento", False))
-        self.tree.heading("status", text="Status Outlook", command=lambda: self._sort_column("status", False))
+        self.tree.heading("pasta", text="Pasta / Fornecedor ⇕", command=lambda: self._sort_column("pasta", False))
+        self.tree.heading("arquivo", text="Arquivo PDF ⇕", command=lambda: self._sort_column("arquivo", False))
+        self.tree.heading("tipo", text="Tipo ⇕", command=lambda: self._sort_column("tipo", False))
+        self.tree.heading("valor", text="Valor (R$) ⇕", command=lambda: self._sort_column("valor", False))
+        self.tree.heading("vencimento", text="Vencimento ⇕", command=lambda: self._sort_column("vencimento", False))
+        self.tree.heading("pagamento", text="Data Pagamento ⇕", command=lambda: self._sort_column("pagamento", False))
+        self.tree.heading("status", text="Status Outlook ⇕", command=lambda: self._sort_column("status", False))
 
-        self.tree.column("pasta", width=160, anchor="w")
-        self.tree.column("arquivo", width=190, anchor="w")
-        self.tree.column("tipo", width=90, anchor="center")
-        self.tree.column("valor", width=110, anchor="e")
-        self.tree.column("vencimento", width=95, anchor="center")
-        self.tree.column("pagamento", width=110, anchor="center")
-        self.tree.column("status", width=180, anchor="w")
+        self.tree.column("pasta", width=170, anchor="w")
+        self.tree.column("arquivo", width=200, anchor="w")
+        self.tree.column("tipo", width=95, anchor="center")
+        self.tree.column("valor", width=115, anchor="e")
+        self.tree.column("vencimento", width=100, anchor="center")
+        self.tree.column("pagamento", width=115, anchor="center")
+        self.tree.column("status", width=200, anchor="w")
 
         v_scroll = ttk.Scrollbar(table_container, orient="vertical", command=self.tree.yview)
         h_scroll = ttk.Scrollbar(table_container, orient="horizontal", command=self.tree.xview)
@@ -263,15 +313,16 @@ class AppGUI:
         table_container.grid_columnconfigure(0, weight=1)
 
         self.tree.bind("<Double-1>", self._on_table_double_click)
+        self.tree.bind("<Button-3>", self._show_context_menu)  # Clique direito no Windows
 
-    def _create_card(self, parent, title: str, initial_val: str, col: int):
-        card = ctk.CTkFrame(parent, fg_color="#374151", corner_radius=8)
-        card.grid(row=0, column=col, padx=8, pady=8, sticky="ew")
+    def _create_card(self, parent, title: str, initial_val: str, col: int, accent_color: str = "#10B981"):
+        card = ctk.CTkFrame(parent, fg_color="#1E1E2E", corner_radius=10, border_width=1, border_color="#313244")
+        card.grid(row=0, column=col, padx=6, pady=4, sticky="ew")
 
-        lbl_t = ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=11), text_color="#D1D5DB")
+        lbl_t = ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=11, weight="bold"), text_color="#9CA3AF")
         lbl_t.pack(pady=(8, 2))
 
-        lbl_v = ctk.CTkLabel(card, text=initial_val, font=ctk.CTkFont(size=18, weight="bold"), text_color="#10B981")
+        lbl_v = ctk.CTkLabel(card, text=initial_val, font=ctk.CTkFont(size=20, weight="bold"), text_color=accent_color)
         lbl_v.pack(pady=(0, 8))
         return lbl_v
 
@@ -317,6 +368,20 @@ class AppGUI:
             self.log_textbox.insert(tk.END, text + "\n")
             self.log_textbox.see(tk.END)
 
+    def _copy_log(self):
+        content = self.log_textbox.get("1.0", tk.END)
+        self.root.clipboard_clear()
+        self.root.clipboard_append(content)
+        messagebox.showinfo("Log", "Log copiado para a área de transferência!")
+
+    def _clear_log(self):
+        self.log_textbox.delete("1.0", tk.END)
+
+    def _clear_search(self):
+        if hasattr(self, "entry_search"):
+            self.entry_search.delete(0, tk.END)
+            self._filter_table()
+
     def _update_results_table(self, dados_varredura):
         """Popula a tabela interativa com os dados lidos de cada boleto e nota fiscal."""
         self.all_table_data.clear()
@@ -334,6 +399,15 @@ class AppGUI:
             boletos = pasta_data.get("boletos", [])
             for bol in boletos:
                 tipo_str = "Boleto" if bol.get("tipo_documento") == "boleto" else "Nota Fiscal"
+                
+                # Formatador visual de status
+                if "criado com sucesso" in status_draft.lower():
+                    status_badge = "🟢 Rascunho Criado"
+                elif "erro" in status_draft.lower() or "falha" in status_draft.lower():
+                    status_badge = f"🔴 {status_draft}"
+                else:
+                    status_badge = status_draft
+
                 row_item = {
                     "pasta": nome_pasta,
                     "arquivo": bol.get("arquivo", ""),
@@ -341,15 +415,16 @@ class AppGUI:
                     "valor": bol.get("valor_formatado", "R$ 0,00"),
                     "vencimento": bol.get("data_vencimento_str", ""),
                     "pagamento": bol.get("data_pagamento_str", ""),
-                    "status": status_draft,
+                    "status": status_badge,
                     "folder_path": pasta_completa,
-                    "pdf_path": bol.get("caminho_completo", "")
+                    "pdf_path": bol.get("caminho_completo", ""),
+                    "linha_digitavel": bol.get("linha_digitavel", "")
                 }
                 self.all_table_data.append(row_item)
 
         self._populate_tree(self.all_table_data)
 
-        # Seleciona a Tab da Tabela para exibição dos resultados
+        # Seleciona a Tab da Tabela para exibição imediata dos resultados
         if USE_CUSTOM_TK:
             self.tabview.set("📊 Tabela Interativa de Resultados")
 
@@ -373,13 +448,14 @@ class AppGUI:
             )
             self.tree_item_paths[item_id] = {
                 "folder_path": row["folder_path"],
-                "pdf_path": row["pdf_path"]
+                "pdf_path": row["pdf_path"],
+                "linha_digitavel": row.get("linha_digitavel", "")
             }
 
     def _filter_table(self, *args):
         """Filtra os dados da tabela por texto e categoria de documento."""
         query = self.entry_search.get().strip().lower() if hasattr(self, "entry_search") else ""
-        filtro_cat = self.combo_filter.get() if hasattr(self, "combo_filter") else "Todos"
+        filtro_cat = self.combo_filter.get() if hasattr(self, "combo_filter") else "Todos os Documentos"
 
         filtered = []
         for row in self.all_table_data:
@@ -388,7 +464,7 @@ class AppGUI:
                 continue
             elif filtro_cat == "Apenas Notas Fiscais" and row["tipo"] != "Nota Fiscal":
                 continue
-            elif filtro_cat == "Com Alerta/Erro" and "erro" not in row["status"].lower() and "aviso" not in row["status"].lower():
+            elif filtro_cat == "Com Alerta / Erro" and "🔴" not in row["status"] and "⚠️" not in row["status"]:
                 continue
 
             # 2. Busca por texto
@@ -436,6 +512,20 @@ class AppGUI:
             os.startfile(pdf_path)
         else:
             messagebox.showwarning("Arquivo não encontrado", f"O arquivo PDF '{pdf_path}' não foi encontrado.")
+
+    def _copy_linha_digitavel(self):
+        """Copia a linha digitável do boleto selecionado para a área de transferência."""
+        item_id = self.tree.focus()
+        if not item_id:
+            return
+        path_info = self.tree_item_paths.get(item_id, {})
+        linha_dig = path_info.get("linha_digitavel")
+        if linha_dig:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(linha_dig)
+            messagebox.showinfo("Copiado", f"Linha digitável copiada:\n{linha_dig}")
+        else:
+            messagebox.showinfo("Informação", "Nenhuma linha digitável encontrada para este item.")
 
     def _open_outlook_drafts(self):
         """Abre a pasta de Rascunhos do Outlook com 1 clique."""
@@ -496,6 +586,7 @@ class AppGUI:
 
         if USE_CUSTOM_TK:
             self.btn_run.configure(state="disabled", text="⏳ Executando Automação...")
+            self.status_bar.configure(text="⏳ Lendo pastas de pagamentos e gerando rascunhos no Outlook...", text_color="#F59E0B")
         else:
             self.btn_run.config(state="disabled", text="Executando...")
 
@@ -517,6 +608,7 @@ class AppGUI:
                 
                 alertas_totais = stats.get("erros_leitura", 0) + stats.get("erros_outlook", 0)
                 self.card_alertas.configure(text=str(alertas_totais))
+                self.status_bar.configure(text="● Automação concluída com sucesso!", text_color="#10B981")
 
             # Atualizar a Tabela Interativa de Resultados
             self.root.after(0, lambda: self._update_results_table(stats.get("dados_varredura", [])))
@@ -534,10 +626,12 @@ class AppGUI:
                 )
         except Exception as e:
             self.append_log(f"\n[ERRO CRÍTICO] {e}")
+            if USE_CUSTOM_TK:
+                self.status_bar.configure(text=f"🔴 Erro: {e}", text_color="#EF4444")
             messagebox.showerror("Erro Fatal", f"Ocorreu uma exceção não tratada:\n{e}")
         finally:
             if USE_CUSTOM_TK:
-                self.btn_run.configure(state="normal", text="🚀 Executar Automação (Salvar Rascunhos)")
+                self.btn_run.configure(state="normal", text="🚀 Executar Automação (Gerar Rascunhos no Outlook)")
             else:
                 self.btn_run.config(state="normal", text="Executar Automação")
 
