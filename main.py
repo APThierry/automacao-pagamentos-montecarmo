@@ -2,7 +2,7 @@ import os
 import sys
 import argparse
 from datetime import date
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from core.config_loader import ConfigLoader
 from core.pdf_extractor import PDFExtractor
@@ -12,7 +12,7 @@ from core.logger import AutomationLogger
 
 
 class AutomacaoPagamentos:
-    def __init__(self, caminho_raiz: str = None, config_path: str = "config.json"):
+    def __init__(self, caminho_raiz: Optional[str] = None, config_path: str = "config.json"):
         self.config_loader = ConfigLoader(config_path)
         self.config = self.config_loader.config_data
         

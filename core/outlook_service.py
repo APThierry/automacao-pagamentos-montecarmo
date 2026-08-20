@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, date
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Tuple
 from core.payment_calculator import obter_saudacao, obter_mes_extenso
 
 class OutlookService:
@@ -25,7 +25,7 @@ class OutlookService:
                        nome_pasta: str, 
                        boletos_info: List[Dict[str, Any]], 
                        anexos: List[str],
-                       dt_referencia: date = None) -> tuple[bool, str]:
+                       dt_referencia: Optional[date] = None) -> Tuple[bool, str]:
         """
         Cria um e-mail rascunho no Outlook para a pasta especificada.
         Retorna (sucesso, mensagem_ou_assunto).
