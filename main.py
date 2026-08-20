@@ -141,8 +141,7 @@ class AutomacaoPagamentos:
         self.logger.log(f" Alertas de leitura   : {stats['erros_leitura']}")
         self.logger.log(f" Erros de Outlook     : {stats['erros_outlook']}")
         self.logger.log(f" Pastas sem PDFs      : {stats['pastas_ignoradas']}")
-        self.logger.log("==================================================================\n")
-
+        stats["dados_varredura"] = dados_varredura
         return stats
 
 
