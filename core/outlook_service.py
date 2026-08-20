@@ -74,15 +74,12 @@ class OutlookService:
             pag_str = b.get("data_pagamento_str", "A verificar")
             forn_str = b.get("fornecedor", nome_pasta)
             val_str = b.get("valor_formatado", "R$ 0,00")
-            linha_dig = b.get("linha_digitavel")
 
             corpo += f"Data de vencimento: {venc_str}\n"
             corpo += f"Data para pagamento: {pag_str}\n"
             corpo += f"Fornecedor: {forn_str}\n"
             corpo += f"Valor: {val_str}\n"
             corpo += "Forma de pagamento: Boleto\n"
-            if linha_dig:
-                corpo += f"Linha Digitável: {linha_dig}\n"
 
             if notas_fiscais:
                 corpo += f"\nNotas Fiscais anexadas ({len(notas_fiscais)} item/itens):\n"
@@ -94,22 +91,19 @@ class OutlookService:
             if b.get("esta_vencido"):
                 corpo += "\n⚠️ Atenção: data de vencimento já passou. Verificar urgência.\n"
 
-        # Caso 2: Apensas 1 documento genérico ou sem tipo boleto explícito
+        # Caso 2: Apenas 1 documento genérico ou sem tipo boleto explícito
         elif len(boletos_info) == 1:
             b = boletos_info[0]
             venc_str = b.get("data_vencimento_str", "A verificar")
             pag_str = b.get("data_pagamento_str", "A verificar")
             forn_str = b.get("fornecedor", nome_pasta)
             val_str = b.get("valor_formatado", "R$ 0,00")
-            linha_dig = b.get("linha_digitavel")
 
             corpo += f"Data de vencimento: {venc_str}\n"
             corpo += f"Data para pagamento: {pag_str}\n"
             corpo += f"Fornecedor: {forn_str}\n"
             corpo += f"Valor: {val_str}\n"
             corpo += "Forma de pagamento: Boleto\n"
-            if linha_dig:
-                corpo += f"Linha Digitável: {linha_dig}\n"
 
             if b.get("esta_vencido"):
                 corpo += "\n⚠️ Atenção: data de vencimento já passou. Verificar urgência.\n"
@@ -124,7 +118,6 @@ class OutlookService:
                 forn_str = b.get("fornecedor", nome_pasta)
                 val_str = b.get("valor_formatado", "R$ 0,00")
                 arquivo_str = b.get("arquivo", "")
-                linha_dig = b.get("linha_digitavel")
                 tipo_str = "Boleto" if b.get("tipo_documento") == "boleto" else "Nota Fiscal"
 
                 corpo += f"--- Documento {idx}: {tipo_str} ({arquivo_str}) ---\n"
@@ -132,10 +125,7 @@ class OutlookService:
                 corpo += f"Data para pagamento: {pag_str}\n"
                 corpo += f"Fornecedor: {forn_str}\n"
                 corpo += f"Valor: {val_str}\n"
-                corpo += "Forma de pagamento: Boleto\n"
-                if linha_dig:
-                    corpo += f"Linha Digitável: {linha_dig}\n"
-                corpo += "\n"
+                corpo += "Forma de pagamento: Boleto\n\n"
 
                 if b.get("esta_vencido"):
                     tem_vencido = True
